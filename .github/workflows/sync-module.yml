@@ -102,25 +102,46 @@ jobs:
         path: site
         token: ${{ env.GH_PAT }}
         fetch-depth: 0
-    - name: Convert & copy notebooks
+    - name: Convert & copy notebooks (with debug)
       run: |
+        set -euo pipefail
+    
+        echo "==> Preparing site/modules"
         mkdir -p site/modules
-        
-        # convert notebooks (skipping ipynb_checkpoints)
-        find . -type d -name 'ipynb_checkpoints' -prune -o \
-               -name '*.ipynb' -print | while read nb; do
+    
+        declare -a fail_list=()
+    
+        # Skip ipynb_checkpoints; iterate over every .ipynb file
+        while IFS= read -r nb; do
           md="site/modules/${nb%.ipynb}.md"
           mkdir -p "$(dirname "$md")"
-          jupytext "$nb" --to myst -o "$md"
-        done
-        
-        # always copy the TOC
+          echo "Converting $nb  →  $md"
+          if ! jupytext "$nb" --to myst -o "$md"; then
+            echo "::error ::Failed to convert $nb"
+            fail_list+=("$nb")
+          fi
+        done < <(
+          find . -type d -name 'ipynb_checkpoints' -prune -o \
+                 -type f -name '*.ipynb' -print
+        )
+    
+        # Stop the job if anything failed, printing a neat summary
+        if [ ${#fail_list[@]} -ne 0 ]; then
+          echo "-----------------------------------------------------------------"
+          echo "The following notebooks could NOT be converted:"
+          printf ' - %s\n' "${fail_list[@]}"
+          echo "-----------------------------------------------------------------"
+          exit 1
+        fi
+    
+        # ---------------------------------------------------------------
+        # Only reached if every conversion succeeded
+        echo "Copying book-level files"
         cp _toc.yml site/modules/_toc.yml
-        
-        # only copy these if they exist
         [ -f _config.yml      ] && cp _config.yml       site/modules/_config.yml
         [ -f requirements.txt ] && cp requirements.txt  site/modules/requirements.txt
         [ -f index.md         ] && cp index.md          site/modules/index.md
+
         
     - name: Commit to site repo
       run: |
