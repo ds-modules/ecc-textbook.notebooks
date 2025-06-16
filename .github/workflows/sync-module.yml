@@ -1,0 +1,57 @@
+name: Sync a module repo into notebooks
+on:
+  repository_dispatch:
+    types: [sync-module]
+
+permissions:
+  contents: write       # allows committing to this repo
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1.  Parse payload -------------------------------------------------------
+    - name: Capture source + folder
+      run: |
+        echo "SOURCE_REPO=${{ github.event.client_payload.source_repo }}" >> $GITHUB_ENV
+        echo "FOLDER_NAME=${{ github.event.client_payload.folder_name }}" >> $GITHUB_ENV
+
+    # 2.  Check out THIS repo --------------------------------------------------
+    - name: Check out textbook repo
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0        # keeps history tidy if you later do diffs
+
+    # 3.  Wipe the existing copy of that module -------------------------------
+    - run: |
+        rm -rf "$FOLDER_NAME"
+
+    # 4.  Pull the latest subject repo files ----------------------------------
+    - name: Check out source repo
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ env.SOURCE_REPO }}
+        path: tmp-source
+        fetch-depth: 0
+
+    # 5.  Copy everything but .git/.github ------------------------------------
+    - name: Sync files
+      run: |
+        mkdir -p "$FOLDER_NAME"
+        rsync -a --delete \
+          --exclude '.git' --exclude '.github' \
+          tmp-source/ "$FOLDER_NAME/"
+
+    # 6.  Commit + push if anything changed -----------------------------------
+    - name: Commit & push
+      run: |
+        if [ -n "$(git status --porcelain)" ]; then
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$FOLDER_NAME"
+          git commit -m "Sync from $SOURCE_REPO"
+          git push
+        else
+          echo "No changes – skipping commit."
+        fi
