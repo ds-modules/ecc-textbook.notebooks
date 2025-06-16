@@ -42,37 +42,39 @@ jobs:
 
     # -----------------------------------------------------------------------
     # 3. Auto-generate _toc.yml  (recursive scan)
-    - name: Generate _toc.yml
+    - name: Generate _toc.yml (one part per module)
       run: |
         python - <<'PY'
-        import os, yaml, pathlib, sys
-        ROOT = pathlib.Path('.')
-        chapters = []
-        for path in sorted(ROOT.rglob('*.ipynb')):
-            if 'ipynb_checkpoints' in path.parts:     # skip checkpoints
-                continue
-            stem = path.relative_to(ROOT).with_suffix('')
-            # chapter boundary = top-level folder (ecc-statistics, ecc-biology, etc.)
-            folder = stem.parts[0]
-            entry = {'file': str(stem)}
-            # place entry under the correct chapter dict
-            chapter = next((c for c in chapters if c['label']==folder), None)
-            if chapter is None:
-                chapter = {'label': folder, 'sections': []}
-                chapters.append(chapter)
-            chapter['sections'].append(entry)
+        import pathlib, yaml, re, os
+    
+        ROOT = pathlib.Path('.')          # repo root
+        modules_dir = ROOT                # each top-level folder *is* a module
+    
+        toc_parts = []
+    
+        for module_path in sorted(p for p in modules_dir.iterdir() if p.is_dir()):
+            module_name = module_path.name          # e.g. ecc-biology
+            chapters = []
+    
+            # Recursively collect every .ipynb under this module (skip checkpoints)
+            for nb in sorted(module_path.rglob('*.ipynb')):
+                if 'ipynb_checkpoints' in nb.parts:
+                    continue
+                rel_to_module = nb.relative_to(module_path).with_suffix('')  # drop .ipynb
+                chapters.append({'file': str(rel_to_module)})
+    
+            if chapters:
+                toc_parts.append({
+                    'caption': module_name,
+                    'chapters': chapters
+                })
+    
         toc = {
             'format': 'jb-book',
-            'root': 'intro',          #  <-- confirm you have an index.*
-            'parts': [
-                {'caption': 'Modules',
-                 'chapters': [
-                     {'file': chap['sections'][0]['file'],
-                      'sections': chap['sections'][1:]}
-                     for chap in chapters
-                 ]}
-            ]
+            'root'  : 'intro',             # <— make sure modules/intro.md exists
+            'parts' : toc_parts
         }
+    
         with open('_toc.yml', 'w') as f:
             yaml.dump(toc, f, sort_keys=False)
         PY
