@@ -61,7 +61,7 @@ jobs:
                 if 'ipynb_checkpoints' in nb.parts:
                     continue
                 rel_to_module = nb.relative_to(module_path).with_suffix('')  # drop .ipynb
-                chapters.append({'file': f"{module_name}/{rel}".replace('\\', '/')})
+                chapters.append({'file': f"{module_name}/{rel_to_module}".replace('\\', '/')})
     
             if chapters:
                 toc_parts.append({
