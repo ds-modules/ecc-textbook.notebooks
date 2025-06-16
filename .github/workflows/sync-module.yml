@@ -63,7 +63,7 @@ jobs:
             chapter['sections'].append(entry)
         toc = {
             'format': 'jb-book',
-            'root': 'index',          #  <-- confirm you have an index.*
+            'root': 'intro',          #  <-- confirm you have an index.*
             'parts': [
                 {'caption': 'Modules',
                  'chapters': [
