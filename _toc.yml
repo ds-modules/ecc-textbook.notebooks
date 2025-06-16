@@ -39,6 +39,3 @@ parts:
     - file: ecc-statistics/data_representation/Data-Rep-Module
     - file: ecc-statistics/probability_distribution/Probability-Distributions
     - file: ecc-statistics/sampling_distribution/sampling_distribution
-  - file: tmp-source/marketing-fast-food/marketing_case_study
-    sections:
-    - file: tmp-source/sba/sba
