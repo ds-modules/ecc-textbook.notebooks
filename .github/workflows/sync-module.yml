@@ -1,57 +1,122 @@
-name: Sync a module repo into notebooks
+name: Sync module repo ➜ refresh TOC & push to site repo
+
 on:
   repository_dispatch:
-    types: [sync-module]
+    types: [sync-module]        
 
 permissions:
-  contents: write       # allows committing to this repo
+  contents: write               
 
 jobs:
   sync:
     runs-on: ubuntu-latest
 
+    env:
+      SITE_REPO: ds-modules/ecc-textbook
+      GH_PAT: ${{ secrets.ECC_TEXTBOOK_PAT }}
+
     steps:
-    # 1.  Parse payload -------------------------------------------------------
-    - name: Capture source + folder
-      run: |
-        echo "SOURCE_REPO=${{ github.event.client_payload.source_repo }}" >> $GITHUB_ENV
-        echo "FOLDER_NAME=${{ github.event.client_payload.folder_name }}" >> $GITHUB_ENV
-
-    # 2.  Check out THIS repo --------------------------------------------------
-    - name: Check out textbook repo
-      uses: actions/checkout@v4
+    # -----------------------------------------------------------------------
+    # 1. Pull THIS repo (so we can commit back into it)
+    - uses: actions/checkout@v4
       with:
-        fetch-depth: 0        # keeps history tidy if you later do diffs
-
-    # 3.  Wipe the existing copy of that module -------------------------------
-    - run: |
-        rm -rf "$FOLDER_NAME"
-
-    # 4.  Pull the latest subject repo files ----------------------------------
-    - name: Check out source repo
-      uses: actions/checkout@v4
-      with:
-        repository: ${{ env.SOURCE_REPO }}
-        path: tmp-source
         fetch-depth: 0
 
-    # 5.  Copy everything but .git/.github ------------------------------------
-    - name: Sync files
+    # -----------------------------------------------------------------------
+    # 2. Remove the old copy of this module & pull fresh
+    - name: Purge and update module folder
       run: |
-        mkdir -p "$FOLDER_NAME"
-        rsync -a --delete \
-          --exclude '.git' --exclude '.github' \
-          tmp-source/ "$FOLDER_NAME/"
+        MODULE="${{ github.event.client_payload.folder_name }}"
+        rm -rf "$MODULE"
+    - uses: actions/checkout@v4
+      with:
+        repository: ${{ github.event.client_payload.source_repo }}
+        path: tmp-source
+        fetch-depth: 0
+    - name: Copy in new files (skip .git/.github)
+      run: |
+        rsync -a --delete --exclude .git --exclude .github tmp-source/ "${{ github.event.client_payload.folder_name }}/"
 
-    # 6.  Commit + push if anything changed -----------------------------------
-    - name: Commit & push
+    # -----------------------------------------------------------------------
+    # 3. Auto-generate _toc.yml  (recursive scan)
+    - name: Generate _toc.yml
       run: |
+        python - <<'PY'
+        import os, yaml, pathlib, sys
+        ROOT = pathlib.Path('.')
+        chapters = []
+        for path in sorted(ROOT.rglob('*.ipynb')):
+            if 'ipynb_checkpoints' in path.parts:     # skip checkpoints
+                continue
+            stem = path.relative_to(ROOT).with_suffix('')
+            # chapter boundary = top-level folder (ecc-statistics, ecc-biology, etc.)
+            folder = stem.parts[0]
+            entry = {'file': str(stem)}
+            # place entry under the correct chapter dict
+            chapter = next((c for c in chapters if c['label']==folder), None)
+            if chapter is None:
+                chapter = {'label': folder, 'sections': []}
+                chapters.append(chapter)
+            chapter['sections'].append(entry)
+        toc = {
+            'format': 'jb-book',
+            'root': 'index',          #  <-- confirm you have an index.*
+            'parts': [
+                {'caption': 'Modules',
+                 'chapters': [
+                     {'file': chap['sections'][0]['file'],
+                      'sections': chap['sections'][1:]}
+                     for chap in chapters
+                 ]}
+            ]
+        }
+        with open('_toc.yml', 'w') as f:
+            yaml.dump(toc, f, sort_keys=False)
+        PY
+
+    # -----------------------------------------------------------------------
+    # 4. Commit _toc.yml + refreshed module
+    - name: Commit back to notebooks repo
+      run: |
+        git config user.name  "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
         if [ -n "$(git status --porcelain)" ]; then
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "$FOLDER_NAME"
-          git commit -m "Sync from $SOURCE_REPO"
+          git add .
+          git commit -m "Auto-sync ${{ github.event.client_payload.folder_name }} + regenerate _toc.yml"
           git push
         else
-          echo "No changes – skipping commit."
+          echo "Nothing to commit."
+        fi
+
+    # -----------------------------------------------------------------------
+    # 5. Convert ALL notebooks → MyST Markdown & push to site repo
+    - name: Install conversion tools
+      run: pip install jupytext==1.*      
+    - name: Checkout site repo
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ env.SITE_REPO }}
+        path: site
+        token: ${{ env.GH_PAT }}
+        fetch-depth: 0
+    - name: Convert & copy notebooks
+      run: |
+        find . -name '*.ipynb' | while read nb; do
+          md="site/${nb%.ipynb}.md"
+          mkdir -p "$(dirname "$md")"
+          jupytext "$nb" --to myst -o "$md"
+        done
+        # copy the freshly generated TOC too
+        cp _toc.yml site/_toc.yml
+    - name: Commit to site repo
+      run: |
+        cd site
+        git config user.name  "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        if [ -n "$(git status --porcelain)" ]; then
+          git add .
+          git commit -m "Sync from notebooks repo $GITHUB_SHA"
+          git push
+        else
+          echo "Site repo already up to date."
         fi
