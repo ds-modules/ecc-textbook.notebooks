@@ -103,14 +103,14 @@ jobs:
         token: ${{ env.GH_PAT }}
         fetch-depth: 0
     - name: Convert & copy notebooks
-        run: |
-          mkdir -p site/modules
-          # skip ipynb_checkpoints and anything in tmp-source (already removed, but belt & braces)
-          find . -path './ipynb_checkpoints' -prune -o -name '*.ipynb' -print | while read nb; do
-            md="site/modules/${nb%.ipynb}.md"
-            mkdir -p "$(dirname "$md")"
-            jupytext "$nb" --to myst -o "$md"
-          done
+      run: |
+        mkdir -p site/modules
+        # skip ipynb_checkpoints and anything in tmp-source (already removed, but belt & braces)
+        find . -path './ipynb_checkpoints' -prune -o -name '*.ipynb' -print | while read nb; do
+          md="site/modules/${nb%.ipynb}.md"
+          mkdir -p "$(dirname "$md")"
+          jupytext "$nb" --to myst -o "$md"
+        done
   
           # copy TOC (always exists) …
           cp _toc.yml site/modules/_toc.yml
