@@ -101,13 +101,18 @@ jobs:
         fetch-depth: 0
     - name: Convert & copy notebooks
       run: |
+        mkdir -p site/modules          # new root
         find . -name '*.ipynb' | while read nb; do
-          md="site/${nb%.ipynb}.md"
+        md="site/modules/${nb%.ipynb}.md"
           mkdir -p "$(dirname "$md")"
           jupytext "$nb" --to myst -o "$md"
         done
         # copy the freshly generated TOC too
-        cp _toc.yml site/_toc.yml
+        cp _toc.yml          site/modules/_toc.yml
+        cp _config.yml       site/modules/_config.yml
+        cp requirements.txt  site/modules/requirements.txt
+        if [ -f index.md ]; then cp index.md site/modules/index.md; fi
+
     - name: Commit to site repo
       run: |
         cd site
