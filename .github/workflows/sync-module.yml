@@ -37,6 +37,9 @@ jobs:
       run: |
         rsync -a --delete --exclude .git --exclude .github tmp-source/ "${{ github.event.client_payload.folder_name }}/"
 
+    - name: Remove tmp-source checkout
+      run: rm -rf tmp-source
+
     # -----------------------------------------------------------------------
     # 3. Auto-generate _toc.yml  (recursive scan)
     - name: Generate _toc.yml
@@ -100,18 +103,21 @@ jobs:
         token: ${{ env.GH_PAT }}
         fetch-depth: 0
     - name: Convert & copy notebooks
-      run: |
-        mkdir -p site/modules          # new root
-        find . -name '*.ipynb' | while read nb; do
-        md="site/modules/${nb%.ipynb}.md"
-          mkdir -p "$(dirname "$md")"
-          jupytext "$nb" --to myst -o "$md"
-        done
-        # copy the freshly generated TOC too
-        cp _toc.yml          site/modules/_toc.yml
-        cp _config.yml       site/modules/_config.yml
-        cp requirements.txt  site/modules/requirements.txt
-        if [ -f index.md ]; then cp index.md site/modules/index.md; fi
+        run: |
+          mkdir -p site/modules
+          # skip ipynb_checkpoints and anything in tmp-source (already removed, but belt & braces)
+          find . -path './ipynb_checkpoints' -prune -o -name '*.ipynb' -print | while read nb; do
+            md="site/modules/${nb%.ipynb}.md"
+            mkdir -p "$(dirname "$md")"
+            jupytext "$nb" --to myst -o "$md"
+          done
+  
+          # copy TOC (always exists) …
+          cp _toc.yml site/modules/_toc.yml
+          
+          [ -f _config.yml      ] && cp _config.yml       site/modules/_config.yml
+          [ -f requirements.txt ] && cp requirements.txt  site/modules/requirements.txt
+          [ -f index.md         ] && cp index.md          site/modules/index.md
 
     - name: Commit to site repo
       run: |
