@@ -138,9 +138,7 @@ jobs:
         # Only reached if every conversion succeeded
         echo "Copying book-level files"
         cp _toc.yml site/modules/_toc.yml
-        [ -f _config.yml      ] && cp _config.yml       site/modules/_config.yml
-        [ -f requirements.txt ] && cp requirements.txt  site/modules/requirements.txt
-        [ -f index.md         ] && cp index.md          site/modules/index.md
+        echo "Copied _toc.ym"
 
         
     - name: Commit to site repo
