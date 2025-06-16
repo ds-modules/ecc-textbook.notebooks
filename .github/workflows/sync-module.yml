@@ -105,20 +105,23 @@ jobs:
     - name: Convert & copy notebooks
       run: |
         mkdir -p site/modules
-        # skip ipynb_checkpoints and anything in tmp-source (already removed, but belt & braces)
-        find . -path './ipynb_checkpoints' -prune -o -name '*.ipynb' -print | while read nb; do
+        
+        # convert notebooks (skipping ipynb_checkpoints)
+        find . -type d -name 'ipynb_checkpoints' -prune -o \
+               -name '*.ipynb' -print | while read nb; do
           md="site/modules/${nb%.ipynb}.md"
           mkdir -p "$(dirname "$md")"
           jupytext "$nb" --to myst -o "$md"
         done
-  
-          # copy TOC (always exists) …
-          cp _toc.yml site/modules/_toc.yml
-          
-          [ -f _config.yml      ] && cp _config.yml       site/modules/_config.yml
-          [ -f requirements.txt ] && cp requirements.txt  site/modules/requirements.txt
-          [ -f index.md         ] && cp index.md          site/modules/index.md
-
+        
+        # always copy the TOC
+        cp _toc.yml site/modules/_toc.yml
+        
+        # only copy these if they exist
+        [ -f _config.yml      ] && cp _config.yml       site/modules/_config.yml
+        [ -f requirements.txt ] && cp requirements.txt  site/modules/requirements.txt
+        [ -f index.md         ] && cp index.md          site/modules/index.md
+        
     - name: Commit to site repo
       run: |
         cd site
