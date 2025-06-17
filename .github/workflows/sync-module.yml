@@ -45,38 +45,54 @@ jobs:
     - name: Generate _toc.yml (one part per module)
       run: |
         python - <<'PY'
-        import pathlib, yaml, re, os
-    
-        ROOT = pathlib.Path('.')          # repo root
-        modules_dir = ROOT                # each top-level folder *is* a module
-    
+        import pathlib, yaml, re
+
+        ROOT = pathlib.Path('.')          # repo root (modules live at top level)
+
+        # 🔹 Folder-name → Nice caption mapping
+        PRETTY = {
+            "ecc-biology"        : "Biology",
+            "ecc-statistics"     : "Statistics",
+            "ecc-cs-9"           : "CS 9",
+            "ecc-calculus"       : "Calculus",
+            "ecc-business"       : "Business",
+            "ecc-sociology    "  : "Sociology",
+            "ecc-ethnic-studies" : "Social Justice"
+        }
+
         toc_parts = []
-    
-        for module_path in sorted(p for p in modules_dir.iterdir() if p.is_dir()):
-            module_name = module_path.name          # e.g. ecc-biology
+
+        for module_path in sorted(p for p in ROOT.iterdir() if p.is_dir()):
+            module_key  = module_path.name              # e.g. ecc-biology
+            caption     = PRETTY.get(
+                module_key,
+                re.sub(r'^ecc-', '', module_key)        # drop leading ecc-
+                  .replace('-', ' ')                    # dashes → spaces
+                  .title()                              # Title Case
+            )
+
             chapters = []
-    
-            # Recursively collect every .ipynb under this module (skip checkpoints)
+
+            # Recursively collect every .ipynb (skip checkpoints)
             for nb in sorted(module_path.rglob('*.ipynb')):
                 if 'ipynb_checkpoints' in nb.parts:
                     continue
-                rel_to_module = nb.relative_to(module_path).with_suffix('')  # drop .ipynb
-                chapters.append({'file': f"{module_name}/{rel_to_module}".replace('\\', '/')})
-    
+                rel = nb.relative_to(ROOT).with_suffix('')   # strip .ipynb
+                chapters.append({'file': str(rel).replace('\\', '/')})
+
             if chapters:
-                toc_parts.append({
-                    'caption': module_name,
-                    'chapters': chapters
-                })
-    
+                toc_parts.append({'caption': caption, 'chapters': chapters})
+
         toc = {
             'format': 'jb-book',
-            'root'  : 'intro',             # <— make sure modules/intro.md exists
+            'root'  : 'intro',    # ensure intro.md exists
             'parts' : toc_parts
         }
-    
-        with open('_toc.yml', 'w') as f:
-            yaml.dump(toc, f, sort_keys=False)
+
+        pathlib.Path('_toc.yml').write_text(
+            yaml.dump(toc, sort_keys=False),
+            encoding='utf-8'
+        )
         PY
 
     # -----------------------------------------------------------------------
