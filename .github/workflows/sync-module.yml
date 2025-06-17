@@ -146,7 +146,9 @@ jobs:
     # 6. Normalize heading levels in the generated Markdown
     - name: Normalise Markdown heading levels
       run: |
-        python .github/scripts/normalize-headings.py -v $(find site -type f -name '*.md')
+        # -print0 / -0 keeps filenames with spaces whole
+        find site -type f -name '*.md' -print0 \
+          | xargs -0 python .github/scripts/normalize-headings.py -v
     
     # -----------------------------------------------------------------------
     # 7. Push to Repo
