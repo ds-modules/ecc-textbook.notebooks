@@ -1,4 +1,4 @@
-name: Sync module repo ➜ refresh TOC & push to site repo
+name: Sync module repo ➜ generate TOC ➜ convert notebooks to myst ➜ normalize headings ➜ push to site repo
 
 on:
   repository_dispatch:
@@ -8,7 +8,7 @@ permissions:
   contents: write               
 
 jobs:
-  sync:
+  sync-generate-convert-normalize-push:
     runs-on: ubuntu-latest
 
     env:
@@ -99,8 +99,8 @@ jobs:
     # 4. Commit _toc.yml + refreshed module
     - name: Commit back to notebooks repo
       run: |
-        git config user.name  "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git config user.name  "jonathanferrari"
+        git config user.email "jonathanferrari@berkeley.edu"
         if [ -n "$(git status --porcelain)" ]; then
           git add .
           git commit -m "Auto-sync ${{ github.event.client_payload.folder_name }} + regenerate _toc.yml"
@@ -171,11 +171,11 @@ jobs:
     - name: Commit to site repo
       run: |
         cd site
-        git config user.name  "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git config user.name  "jonathanferrari"
+        git config user.email "jonathanferrari@berkeley.edu"
         if [ -n "$(git status --porcelain)" ]; then
           git add .
-          git commit -m "Sync from notebooks repo $GITHUB_SHA"
+          git commit -m "Sync from notebooks repo"
           git push
         else
           echo "Site repo already up to date."
