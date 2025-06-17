@@ -94,7 +94,7 @@ jobs:
         fi
 
     # -----------------------------------------------------------------------
-    # 5. Convert ALL notebooks → MyST Markdown & push to site repo
+    # 5. Convert ALL notebooks → MyST Markdown
     - name: Install conversion tools
       run: pip install jupytext==1.*      
     - name: Checkout site repo
@@ -142,7 +142,14 @@ jobs:
         cp _toc.yml site/modules/_toc.yml
         echo "Copied _toc.ym"
 
-        
+    # -----------------------------------------------------------------------
+    # 6. Normalize heading levels in the generated Markdown
+    - name: Normalise Markdown heading levels
+      run: |
+        python .github/scripts/normalize-headings.py -v $(find site -type f -name '*.md')
+    
+    # -----------------------------------------------------------------------
+    # 7. Push to Repo
     - name: Commit to site repo
       run: |
         cd site
