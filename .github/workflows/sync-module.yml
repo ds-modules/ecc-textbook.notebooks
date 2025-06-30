@@ -53,7 +53,7 @@ jobs:
         PRETTY = {
             "ecc-biology"           : "Biology",
             "ecc-statistics"        : "Statistics",
-            "ecc-cs-9"              : "CS 9",
+            "ecc-cs9"              : "CS 9",
             "ecc-calculus"          : "Calculus",
             "ecc-business"          : "Business",
             "ecc-sociology"         : "Sociology",
