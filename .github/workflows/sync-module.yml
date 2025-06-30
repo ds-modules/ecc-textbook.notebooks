@@ -51,13 +51,15 @@ jobs:
 
         # 🔹 Folder-name → Nice caption mapping
         PRETTY = {
-            "ecc-biology"        : "Biology",
-            "ecc-statistics"     : "Statistics",
-            "ecc-cs-9"           : "CS 9",
-            "ecc-calculus"       : "Calculus",
-            "ecc-business"       : "Business",
-            "ecc-sociology    "  : "Sociology",
-            "ecc-ethnic-studies" : "Social Justice"
+            "ecc-biology"           : "Biology",
+            "ecc-statistics"        : "Statistics",
+            "ecc-cs-9"              : "CS 9",
+            "ecc-calculus"          : "Calculus",
+            "ecc-business"          : "Business",
+            "ecc-sociology"         : "Sociology",
+            "ecc-ethnic-studies"    : "Ethnic Studies",
+            "ecc-chemistry"         : "Chemistry",
+            "ecc-child-development" : "Child Development"
         }
 
         toc_parts = []
