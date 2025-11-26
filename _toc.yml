@@ -32,6 +32,7 @@ parts:
   - file: ecc-cs9/ces/nb-archive/CES_Mapping
   - file: ecc-cs9/ces/proj1/proj1
   - file: ecc-cs9/ces/proj2
+  - file: ecc-cs9/policing/policing
 - caption: Ethnic Studies
   chapters:
   - file: ecc-ethnic-studies/Incarceration/Incarcerations
